@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="post" action="http://upload.qiniu.com/" enctype="multipart/form-data" id="upload-form">
+  <input name="key" type="hidden" id="upload-key" />
+  <input name="token" type="hidden" id="upload-token" /> 
+  <input name="file" type="file" id="upload-file" />
+  <button type="button" id="upload-btn">upload</button>
+</form>
+<hr />
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='disk.js') }}"></script>
+{% endblock %}
+
