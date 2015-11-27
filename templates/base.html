@@ -2,30 +2,58 @@
 <html>
 
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/reset.css') }}" rel="stylesheet">
+
   <title>Cloud disk</title>
 </head>
 
 <body>
-{% if g.user %}
-<p><a href="{{ url_for('logout') }}">Logout</a></p>
-<hr />
-{% endif %}
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    {% for message in messages %}
-      <p style="color:red">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+<div class="container">
+    <div class="header clearfix">
+        <nav>
+            <ul class="nav nav-pills pull-right">
+                {% if g.user %}
+                <li role="presentation"><a href="{{ url_for('logout') }}">Sign out</a></p>
+                {% endif %}
+            </ul>
+        </nav>
+        <h3 class="text-muted">Cloud disk</h3>
+    </div>
 
-{% block content %}
-{% endblock %}
+    <div class="errormsg">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-warning alert-dismissible" role="alert">
+                    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
-<script src="{{ url_for('static', filename='jquery-1.11.3.min.js') }}"></script>
+    <div class="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2015 Tencent, Inc.</p>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 {% block js %}
 {% endblock %}
+
 </body>
 
 </html>

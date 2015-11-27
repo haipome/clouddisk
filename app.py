@@ -3,16 +3,20 @@
 
 import os
 import re
-import time
 import qiniu
+import time
+import datetime
+import urllib
+import urlparse
 import logging
 
 from flask import Flask
-from flask import g, request, session, url_for, abort, redirect, flash, current_app, render_template, jsonify
+from flask import g, request, session, url_for, abort, redirect, flash, current_app, render_template, jsonify, current_app
 from flask.ext.sqlalchemy import SQLAlchemy
 from werkzeug import generate_password_hash, check_password_hash
 from logging.handlers import RotatingFileHandler
 from functools import update_wrapper
+from qiniu import build_batch_delete
 
 qiniu_bucket = 'disk'
 qiniu_access_key = '1qtawbAy3V6EKPpVX3an_8DuSWRPz3A-0_BuU3zI'
@@ -68,6 +72,13 @@ def is_valid_account(account):
     if not re.match('^\w{2,30}$', account):
         return False
     return True
+
+def human_size(size):
+    for unit in ['B','KB','MB']:
+        if abs(size) < 1000.0:
+            return "%3.3f%s" % (size, unit)
+        size /= 1000.0
+    return "%.3f%s" % (size, 'GB')
 
 @app.before_request
 def setup_user():
@@ -125,9 +136,9 @@ def logout():
     return redirect(url_for('index'))
 
 @require_login
-@app.route("/token/upload/<filename>")
+@app.route("/token/upload/<path:filename>")
 def token_upload(filename):
-    key = g.user.account.encode('utf8') + '/' + filename.encode('utf8')
+    key = (g.user.account + '/' + filename).encode('utf8')
     token = qn.upload_token(qiniu_bucket, key)
     return jsonify({'key': key, 'token': token})
 
@@ -135,11 +146,103 @@ def token_upload(filename):
 @app.route("/disk/<path:prefix>")
 @require_login
 def disk(prefix=None):
-    bucket = BucketManager(qn)
+    if prefix:
+        if prefix[-1] != '/':
+            prefix = prefix + '/'
+    else:
+        prefix = ''
+    real_prefix = g.user.account + '/' + prefix
+
+    parents = []
+    parents.append({'name': 'Home', 'url': url_for('disk')})
+    current_path = ''
+    for folder in prefix.split('/')[:-1]:
+        if folder:
+            parents.append({'name': folder, 'url': url_for('disk') + current_path + folder + '/'})
+        current_path = current_path + folder + '/'
+
+    bucket = qiniu.BucketManager(qn)
     marker = None
+
+    items = []
+    folders = []
     while True:
-        ret, eof, info = bucket.list(qiniu_bucket, prefix=prefix, marker=marker, limit=1000)
-    return render_template('disk.html')
+        ret, eof, _ = bucket.list(qiniu_bucket, prefix=real_prefix, marker=marker, limit=1000)
+        for item in ret['items']:
+            name = item['key'][len(real_prefix):]
+            if not name:
+                continue
+            if '/' in name:
+                folder = name.split('/')[0]
+                if folder and folder not in folders:
+                    folders.append(folder)
+            else:
+                items.append({'key': item['key'][len(g.user.account):], 'name': name,
+                    'modified': datetime.datetime.fromtimestamp(int(item['putTime'] / 1e7)).strftime('%Y-%m-%d %H:%M:%S'),
+                    'size': human_size(item['fsize'])})
+        if eof:
+            break
+        marker = ret['marker']
+    folders.sort()
+    items.sort(key=lambda item: item['name'])
+
+    return render_template('disk.html', prefix=prefix, parents=parents, folders=folders, items=items)
+
+@app.route("/new_folder/", methods=['POST'])
+@require_login
+def new_folder():
+    name = request.form.get('name', '')
+    if not name:
+        return jsonify({'result': 'fail'})
+    key = (g.user.account + '/' + name).encode('utf8')
+    if key[-1] != '/':
+        key += '/'
+    token = qn.upload_token(qiniu_bucket)
+    ret, info = qiniu.put_data(token, key.decode('utf8'), 'folder')
+    if not ret:
+        return jsonify({'result': 'fail'})
+    return jsonify({'result': 'success'})
+
+@app.route("/delete/", methods=['POST'])
+@require_login
+def delete():
+    key = request.form.get('key', '')
+    if not key:
+        return jsonify({'result': 'fail'})
+    real_key = (g.user.account + key).encode('utf8')
+    bucket = qiniu.BucketManager(qn)
+    if real_key[-1] != '/':
+        ret, info = bucket.delete(qiniu_bucket, real_key)
+        if ret:
+            return jsonify({'result': 'fail'})
+    else:
+        items = []
+        marker = None
+        while True:
+            ret, eof, _ = bucket.list(qiniu_bucket, prefix=real_key, marker=marker, limit=1000)
+            for item in ret['items']:
+                items.append(item['key'].encode('utf8'))
+            if eof:
+                break
+            marker = ret['marker']
+        ops = build_batch_delete(qiniu_bucket, items)
+        ret, info = bucket.batch(ops)
+        if ret[0]['code'] != 200:
+            return jsonify({'result': 'fail'})
+    return jsonify({'result': 'success'})
+
+@app.route("/download/")
+@require_login
+def download():
+    key = request.args.get('key', '')
+    if not key:
+        return jsonify({'errormsg': 'invalid argument'})
+    real_name = key.split('/')[-1]
+    real_key = g.user.account + key
+    domain = "7xon9u.com1.z0.glb.clouddn.com"
+    base_url = 'http://%s/%s?attname=%s' % (domain, urllib.pathname2url(real_key.encode('utf8')), urllib.pathname2url(real_name.encode('utf8')))
+    download_url = qn.private_download_url(base_url, expires=3600)
+    return redirect(download_url)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0")

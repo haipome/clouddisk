@@ -1,16 +1,104 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form method="post" action="http://upload.qiniu.com/" enctype="multipart/form-data" id="upload-form">
-  <input name="key" type="hidden" id="upload-key" />
-  <input name="token" type="hidden" id="upload-token" /> 
-  <input name="file" type="file" id="upload-file" />
-  <button type="button" id="upload-btn">upload</button>
-</form>
-<hr />
+
+<div class="row">
+    <div class="col-md-9">
+        <ol class="breadcrumb">
+            {% for parent in parents[:-1] %}
+            <li><a href="{{ parent.url }}">{{ parent.name }}</a></li>
+            {% endfor %}
+            <li class="active">{{ parents[-1].name }}</li>
+        </ol>
+    </div>
+    <div class="col-md-3 upload-menu">
+        <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#new-file-dialog">new file</button>
+        <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#new-folder-dialog">new folder</button>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th class="file-name">Name</th>
+            <th class="file-time">Modified</th>
+            <th class="file-size">Size</th>
+            <th class="file-oper"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for folder in folders %}
+        <tr key="{{ '/' + prefix + folder + '/' }}">
+            <td class="file-name"><span class="glyphicon glyphicon-folder-close file-type" aria-hidden="true"></span><a href="{{ url_for('disk', prefix=prefix + folder + '/') }}"><span class="item-name">{{ folder }}</span></a></td>
+            <td class="file-time">--</td>
+            <td class="file-size">--</td>
+            <td class="file-oper">
+                <a href="javascript:void(0)"><span class="glyphicon glyphicon-trash oper-delete" aria-hidden="true"></span></a>
+            </td>
+        </tr>
+        {% endfor %}
+        {% for item in items %}
+        <tr key="{{ item.key }}">
+            <td class="file-name"><span class="glyphicon glyphicon-file file-type" aria-hidden="true"></span><span class="item-name">{{ item.name }}</span></td>
+            <td class="file-time">{{ item.modified }}</td>
+            <td class="file-size">{{ item.size }}</td>
+            <td class="file-oper">
+                <a href="javascript:void(0)"><span class="glyphicon glyphicon-trash oper-delete" aria-hidden="true"></span></a>
+                <a href="{{ url_for('download', key=item.key) }}"><span class="glyphicon glyphicon-download oper-download" aria-hidden="true"></span></a>
+                <a href="javascript:void(0)"><span class="glyphicon glyphicon-edit oper-rename" aria-hidden="true"></span></a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="new-file-dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Upload file</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-inline" id="upload-file-form">
+                    <div class="form-group">
+                        <input type="file" id="upload-file-name" name="file">
+                    </div>
+                    <button type="button" id="upload-file-button" data-loading-text="Uploading..." class="btn btn-primary btn-sm" autocomplete="off" prefix="{{ prefix }}">Upload</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="new-folder-dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Create folder</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-inline" id="new-folder-form">
+                    <div class="form-group">
+                        <label for="new-folder-name">Name: </label>
+                        <input type="text" id="new-folder-name" name="name" >
+                    </div>
+                    <button type="button" id="new-folder-button" data-loading-text="Creating..." class="btn btn-primary btn-sm" autocomplete="off" prefix="{{ prefix }}">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block js %}
-<script src="{{ url_for('static', filename='disk.js') }}"></script>
+<script src="{{ url_for('static', filename='js/disk.js') }}"></script>
 {% endblock %}
-
