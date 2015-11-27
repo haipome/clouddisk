@@ -16,7 +16,6 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from werkzeug import generate_password_hash, check_password_hash
 from logging.handlers import RotatingFileHandler
 from functools import update_wrapper
-from qiniu import build_batch_delete
 
 qiniu_bucket = 'disk'
 qiniu_access_key = '1qtawbAy3V6EKPpVX3an_8DuSWRPz3A-0_BuU3zI'
@@ -225,10 +224,28 @@ def delete():
             if eof:
                 break
             marker = ret['marker']
-        ops = build_batch_delete(qiniu_bucket, items)
+        ops = qiniu.build_batch_delete(qiniu_bucket, items)
         ret, info = bucket.batch(ops)
         if ret[0]['code'] != 200:
             return jsonify({'result': 'fail'})
+    return jsonify({'result': 'success'})
+
+@app.route("/rename/", methods=['POST'])
+@require_login
+def rename():
+    key = request.form.get('key', '')
+    new_name = request.form.get('name', '')
+    if not key or not new_name:
+        return jsonify({'result': 'fail'})
+    old_name = key.split('/')[-1]
+    if old_name == new_name:
+        return jsonify({'result': 'success'})
+    old_key = (g.user.account + key).encode('utf8')
+    new_key = (g.user.account + key[:-len(old_name)] + new_name).encode('utf8')
+    bucket = qiniu.BucketManager(qn)
+    ret, info = bucket.move(qiniu_bucket, old_key, qiniu_bucket, new_key)
+    if ret:
+        return jsonify({'result': 'fail'})
     return jsonify({'result': 'success'})
 
 @app.route("/download/")

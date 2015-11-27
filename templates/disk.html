@@ -84,10 +84,33 @@
             <div class="modal-body">
                 <form class="form-inline" id="new-folder-form">
                     <div class="form-group">
-                        <label for="new-folder-name">Name: </label>
+                        <label for="new-folder-name">Folder Name: </label>
                         <input type="text" id="new-folder-name" name="name" >
                     </div>
                     <button type="button" id="new-folder-button" data-loading-text="Creating..." class="btn btn-primary btn-sm" autocomplete="off" prefix="{{ prefix }}">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="rename-dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Rename</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-inline" id="rename-form">
+                    <div class="form-group">
+                        <label for="new-file-name">File Name: </label>
+                        <input type="text" id="new-file-name" name="name" >
+                    </div>
+                    <button type="button" id="rename-button" data-loading-text="Rename..." class="btn btn-primary btn-sm" autocomplete="off" prefix="{{ prefix }}">Rename</button>
                 </form>
             </div>
             <div class="modal-footer">

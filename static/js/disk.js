@@ -82,5 +82,34 @@ $(document).ready(function(){
             });
         }
     });
-});
 
+    $(".oper-rename").click(function() {
+        var button = $(this);
+        var name = button.closest("tr").find(".item-name").first().html();
+        var key = button.closest("tr").attr("key");
+        $("#new-file-name").val(name).attr("key", key);
+        $("#rename-dialog").modal();
+    });
+
+    $("#rename-button").click(function() {
+        var button = $(this);
+        var name = $("#new-file-name").val();
+        var key = $("#new-file-name").attr("key");
+        button.button("loading");
+        $.ajax({
+            url: "/rename/",
+            type: "post",
+            data: { key: key, name: name },
+            dataType: "json",
+            success: function(data) {
+                if (data.result == 'success') {
+                    button.html("Rename success");
+                    setTimeout(function(){location.reload();}, 1000);
+                } else {
+                    alert("Rename fail");
+                    button.button("reset");
+                }
+            }
+        });
+    });
+});
